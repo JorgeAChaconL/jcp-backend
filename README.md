@@ -28,6 +28,7 @@ prisma:generate: "prisma generate"
 
 # Enums
 | Name           |   content       |
+| -------------- | --------------- |
 | UserRole       |  SUPERADMIN, ADMIN, SALES, LOGISTICS, WAREHOUSE|
 | CustomerType   |  MINERA, REVENDEDOR, CONSTRUCTORA, GENERAL |
 | ProductUnit    | PIEZA|
