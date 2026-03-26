@@ -17,10 +17,10 @@
 
 ## Scripts para Iniciar.
 
-dev: nodemon src/server.js -> Desarrollo, actualizacion continua.
-start: node src/server.js -> Deploy del backend funciona en produccion.
-prisma:migrate: "prisma migrate dev",
-prisma:generate: "prisma generate"
+- dev: nodemon src/server.js -> Desarrollo, actualizacion continua.
+- start: node src/server.js -> Deploy del backend funciona en produccion.
+- prisma:migrate: "prisma migrate dev",
+- prisma:generate: "prisma generate"
 
 
 
