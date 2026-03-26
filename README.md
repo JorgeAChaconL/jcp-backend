@@ -19,3 +19,26 @@
 
 dev: nodemon src/server.js -> Desarrollo, actualizacion continua.
 start: node src/server.js -> Deploy del backend funciona en produccion.
+prisma:migrate: "prisma migrate dev",
+prisma:generate: "prisma generate"
+
+
+
+### Roles
+
+# Enums
+| Name           |   content       |
+| UserRole       |  SUPERADMIN, ADMIN, SALES, LOGISTICS, WAREHOUSE|
+| CustomerType   |  MINERA, REVENDEDOR, CONSTRUCTORA, GENERAL |
+| ProductUnit    | PIEZA|
+| ProductKind    | SINGLE, SET|
+| LotType        | CONTENEDOR, PEDIMENTO, REPOSICION |
+| InventoryOrigin| OWN, CONSIGNMENT |
+| LotStatus      | OPEN, PARTIAL, CLOSED, CANCELED |
+| SaleStatus     | DRAFT, CONFRMED, PARTIAL, FULFILLED, CANCELED |
+| CurrencyCode   | MXN, USD |
+| InventoryMovementType | IN, OUT, ADJUSTMENT, MANUAL |
+| InventoryReferenceType | LOT, SALE, ADJUSTMENT, MANUAL |
+
+
+

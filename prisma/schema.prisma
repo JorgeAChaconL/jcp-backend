@@ -11,3 +11,276 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  SALES
+  LOGISTICS
+  WAREHOUSE
+}
+
+enum CustomerType {
+  MINERA
+  REVENDEDOR
+  CONSTRUCTORA
+  GENERAL
+}
+
+enum ProductUnit {
+  PIEZA
+}
+
+enum ProductKind {
+  SINGLE
+  SET
+}
+
+enum LotType {
+  Contenedor
+  PEDIMENTO
+  REPOSICION
+}
+
+enum InventoryOrigin {
+  OWN
+  CONSIGMENT
+}
+
+enum LotStatus {
+  OPEN
+  PARTIAL
+  CLOSED
+  CANCELED
+}
+
+enum SaleStatus {
+  DRAFT
+  CONFIRMED
+  PARTIAL
+  FULFILLED
+  CANCELED
+}
+
+enum CurrencyCode {
+  MXN
+  USD
+}
+
+enum InventoryMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  REPOSITION
+}
+
+enum InventoryReferenceType {
+  LOT
+  SALE
+  ADJUSTMENT
+  MANUAL
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  username     String   @unique
+  email        String?  @unique
+  passwordHash String
+  role         UserRole
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales              Sale[]              @relation("SaleCreatedBy")
+  inventoryMovements InventoryMovement[] @relation("MovementCreatedBy")
+}
+
+model Customer {
+  id              String       @id @default(uuid())
+  name            String
+  type            CustomerType @default(GENERAL)
+  discountPercent Decimal      @default(0) @db.Decimal(5, 2)
+  creditEnabled   Boolean      @default(false)
+  creditDays      Int?
+  notes           String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sales     Sale[]
+
+  @@index([name])
+}
+
+model Supplier {
+  id          String  @id @default(uuid())
+  name        String
+  code        String? @unique
+  isConsignor Boolean @default(false)
+  contactName String?
+  email       String?
+  phone       String?
+  notes       String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventortLots InventoryLot[]
+
+  @@index([name])
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  partNumber  String      @unique
+  description String
+  brand       String?
+  unit        ProductUnit @default(PIEZA)
+  kind        ProductKind @default(SINGLE)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventoryLotItems  InventoryLotItem[]
+  saleItems          SaleItem[]
+  inventoryMovements InventoryMovement[]
+
+  @@index([description])
+}
+
+model InventoryLot {
+  id              String          @id @default(uuid())
+  lotCode         String          @unique
+  type            LotType
+  inventoryOrigin InventoryOrigin
+  supplierId      String
+  reference       String?
+  arrivalDate     DateTime?
+  notes           String?
+  status          LotStatus       @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplier          Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  inventoryLotItems InventoryLotItem[]
+  movements         InventoryMovement[]
+
+  @@index([supplierId])
+  @@index([type, inventoryOrigin])
+}
+
+model InventoryLotItem {
+  id                 String  @id @default(uuid())
+  lotId              String
+  productId          String
+  qtyReceived        Int
+  qtyAvailable       Int
+  qtyReserved        Int     @default(0)
+  unitCost           Decimal @db.Decimal(12, 2)
+  operationCostTotal Decimal @default(0) @db.Decimal(12, 2)
+  baseMarginPercent  Decimal @db.Decimal(5, 2)
+  minMarginPercent   Decimal @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lot                 InventoryLot         @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  product             Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  saleItemAllocations SaleItemAllocation[]
+  movements           InventoryMovement[]
+
+  @@unique([lotId, productId])
+  @@index([lotId])
+  @@index([productId])
+  @@index([productId, qtyAvailable])
+}
+
+model Sale {
+  id          String       @id @default(cuid())
+  folio       String       @unique
+  customerId  String
+  status      SaleStatus   @default(DRAFT)
+  saleDate    DateTime     @default(now())
+  currency    CurrencyCode @default(MXN)
+  notes       String?
+  createdById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer  Customer   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy User       @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  items     SaleItem[]
+
+  @@index([customerId])
+  @@index([status, saleDate])
+}
+
+model SaleItem {
+  id                              String  @id @default(cuid())
+  saleId                          String
+  productId                       String
+  quantity                        Int
+  baseCostSnapshot                Decimal @db.Decimal(12, 2)
+  operationCostTotalSnapshot      Decimal @default(0) @db.Decimal(12, 2)
+  baseMarginPercentSnapshot       Decimal @db.Decimal(5, 2)
+  customerDiscountPercentSnapshot Decimal @default(0) @db.Decimal(5, 2)
+  finalMarginPercentSnapshot      Decimal @db.Decimal(5, 2)
+  unitPrice                       Decimal @db.Decimal(12, 2)
+  reference                       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sale        Sale                 @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product     Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  allocations SaleItemAllocation[]
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model SaleItemAllocation {
+  id                      String          @id @default(cuid())
+  saleItemId              String
+  lotItemId               String
+  quantityAllocated       Int
+  unitCostSnapshot        Decimal         @db.Decimal(12, 2)
+  inventoryOriginSnapshot InventoryOrigin
+
+  createdAt DateTime @default(now())
+
+  saleItem SaleItem         @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
+  lotItem  InventoryLotItem @relation(fields: [lotItemId], references: [id], onDelete: Restrict)
+
+  @@index([saleItemId])
+  @@index([lotItemId])
+}
+
+model InventoryMovement {
+  id            String                 @id @default(cuid())
+  productId     String
+  lotId         String
+  lotItemId     String?
+  type          InventoryMovementType
+  quantity      Int
+  referenceType InventoryReferenceType @default(MANUAL)
+  referenceId   String?
+  notes         String?
+  createdById   String
+  createdAt     DateTime               @default(now())
+
+  product   Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  lot       InventoryLot      @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  lotItem   InventoryLotItem? @relation(fields: [lotItemId], references: [id], onDelete: Restrict)
+  createdBy User              @relation("MovementCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([productId, createdAt])
+  @@index([lotId, createdAt])
+  @@index([referenceType, referenceId])
+}
